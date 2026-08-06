@@ -98,7 +98,7 @@ DEFINE        += -DRAPI_GAME_DIR='"$(RAPI_GAME_DIR)"'
 # The kernel wrapper, the syscall layer and the SDL2 gap layer: this
 # project's own code.
 HOST_SRCS = main.cpp kernel.cpp defaults.cpp circle_syscalls.cpp \
-	circle_stubs.cpp sdl_audio_glue.cpp game_paths.cpp
+	circle_stubs.cpp game_paths.cpp
 HOST_OBJS = $(addprefix $(OBJDIR)/,$(HOST_SRCS:.cpp=.o))
 
 # OpenTyrian's source list, taken the way its own Makefile takes it: every
@@ -228,27 +228,21 @@ WRAPPED_SYSCALLS = \
 	opendir readdir closedir rewinddir
 
 # ---------------------------------------------------------------------------
-# SDL and game entry points, redirected at link time
+# Game entry points, redirected at link time
 # ---------------------------------------------------------------------------
 #
-# The same mechanism, used for two places where what the game asks for and
-# what the library offers do not line up. Each one is implemented in this
-# directory, calls __real_ for the cases it does not handle, and is explained
-# where it is written.
+# The same mechanism, for a place where what the game asks for and what the
+# environment offers do not line up. Implemented in this directory, and
+# explained where it is written.
 #
-#   SDL_OpenAudioDevice    a mono game on a stereo device
-#                                                 (sdl_audio_glue.cpp)
 #   get_user_directory     the game's own; there is no environment to read
 #                                                   (game_paths.cpp)
-WRAPPED_SDL = \
-	SDL_OpenAudioDevice
-
 WRAPPED_GAME = get_user_directory
 
 # The link is driven by the cross ld directly (Circle's Rules.mk sets
 # LD = <prefix>ld for GCC builds), so these are plain linker options, not
 # compiler-driver -Wl, ones.
-LDFLAGS += $(addprefix --wrap=,$(WRAPPED_SYSCALLS) $(WRAPPED_SDL) $(WRAPPED_GAME))
+LDFLAGS += $(addprefix --wrap=,$(WRAPPED_SYSCALLS) $(WRAPPED_GAME))
 
 # ---------------------------------------------------------------------------
 # Compilation
