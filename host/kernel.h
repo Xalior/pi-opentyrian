@@ -74,11 +74,6 @@ public:
     TShutdownMode Run(void);
 
 private:
-    // Announce a bring-up step on the serial port, before the step runs.
-    // A polled write straight to the UART, because the logger is one of the
-    // things being brought up. See kernel.cpp.
-    void Step(const char *pName);
-
     // No CScreenDevice: the SDL window owns the display.
     CActLED             m_ActLED;
     CKernelOptions      m_Options;

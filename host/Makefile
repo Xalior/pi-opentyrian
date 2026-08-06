@@ -38,36 +38,7 @@ ROOT       = ..
 SHIM       = $(ROOT)/circle-libsdl2
 OPENTYRIAN = $(ROOT)/opentyrian/src
 
-# Boot bisection: STUB=1 links the host scaffolding with no game in it at all
-# (see stub_opentyrian.cpp). It builds into its own directory and under its own
-# name so a stub image can never be mistaken for a real one, on disk or on the
-# bench, and so `make verify` keeps checking only the real ones.
-#
-# Instrumentation, not product. See the README's note about removing it.
-STUB ?= 0
-
-# Boot bisection by CONTENT rather than by phase. FATSTUB=1 links the stub
-# payload together with the game's objects — all of them, or the first
-# OT_LIMIT of them — but leaves out opentyr.o, so the game's entry point is
-# still the stub's and not one line of its code is ever called.
-#
-# That separates two things a plain stub cannot. If an image carrying all of
-# the game's code boots while the real one does not, the difference is in what
-# the game DOES when it runs. If it stays silent, the mere PRESENCE of those
-# objects is enough — a fact about the image's layout, not about its
-# behaviour — and OT_LIMIT then bisects to the object responsible.
-#
-# Instrumentation, not product. See the README.
-FATSTUB ?= 0
-OT_LIMIT ?= 0
-
-ifeq ($(STUB),1)
-OBJDIR = build/$(RAPI_BOARD)-stub
-else ifeq ($(FATSTUB),1)
-OBJDIR = build/$(RAPI_BOARD)-fat$(OT_LIMIT)
-else
 OBJDIR = build/$(RAPI_BOARD)
-endif
 
 # Circle's own image names, which the Raspberry Pi firmware selects between
 # from the model sections of config.txt: the Pi 3 world boots kernel8.img,
@@ -105,9 +76,6 @@ TYRIAN_DIR ?= /tyrian
 # project's own code.
 HOST_SRCS = main.cpp kernel.cpp defaults.cpp circle_syscalls.cpp \
 	circle_stubs.cpp sdl_indexed.cpp sdl_audio_glue.cpp game_paths.cpp
-ifneq ($(filter 1,$(STUB) $(FATSTUB)),)
-HOST_SRCS += stub_opentyrian.cpp
-endif
 HOST_OBJS = $(addprefix $(OBJDIR)/,$(HOST_SRCS:.cpp=.o))
 
 # OpenTyrian's source list, taken the way its own Makefile takes it: every
@@ -122,27 +90,7 @@ HOST_OBJS = $(addprefix $(OBJDIR)/,$(HOST_SRCS:.cpp=.o))
 # TCP/IP stack under this kernel and no SDL2_net to build against.
 OT_SRCS = $(notdir $(wildcard $(OPENTYRIAN)/*.c))
 
-ifeq ($(STUB),1)
-# The stub image links none of it.
-OT_OBJS =
-else ifeq ($(FATSTUB),1)
-# Every one of the game's objects, opentyr.o included — it carries other
-# functions the rest of the game refers to, so leaving it out would not link.
-# Its entry point is renamed aside instead (GAME_ENTRY below), leaving the
-# stub's as the one the kernel calls.
-#
-# These objects are on the link line as objects rather than archive members,
-# so every one of them lands in the image whether anything references it or
-# not — which is the whole point.
-OT_ALL = $(addprefix $(OBJDIR)/ot/,$(OT_SRCS:.c=.o))
-ifeq ($(OT_LIMIT),0)
-OT_OBJS = $(OT_ALL)
-else
-OT_OBJS = $(wordlist 1,$(OT_LIMIT),$(OT_ALL))
-endif
-else
 OT_OBJS = $(addprefix $(OBJDIR)/ot/,$(OT_SRCS:.c=.o))
-endif
 
 OBJS = $(HOST_OBJS) $(OT_OBJS)
 
@@ -252,21 +200,6 @@ WRAPPED_GAME = get_user_directory
 # compiler-driver -Wl, ones.
 LDFLAGS += $(addprefix --wrap=,$(WRAPPED_SYSCALLS) $(WRAPPED_SDL) $(WRAPPED_GAME))
 
-# A PARTIAL set of the game's objects (FATSTUB with OT_LIMIT) cannot resolve
-# among itself: the game's translation units refer to each other freely, and
-# half of them is half a program. The unresolved references are left as zero
-# rather than refused, which is sound here for one reason only — the stub owns
-# the entry point, so not one of those references is ever followed. It is a
-# layout experiment, and the layout is all it is asked to produce.
-#
-# Never applied to a real image: OT_LIMIT is meaningless unless FATSTUB is on,
-# and a full FATSTUB link (OT_LIMIT=0) resolves everything by itself.
-ifeq ($(FATSTUB),1)
-ifneq ($(OT_LIMIT),0)
-LDFLAGS += --unresolved-symbols=ignore-all --noinhibit-exec
-endif
-endif
-
 # ---------------------------------------------------------------------------
 # Compilation
 # ---------------------------------------------------------------------------
@@ -298,23 +231,14 @@ $(OBJDIR)/ot/%.d: $(OPENTYRIAN)/%.c
 # the preprocessor for this one translation unit keeps the upstream source
 # untouched: nothing else in the game declares or calls main, and the kernel
 # calls the new name.
-# Normally the game's main() becomes the entry point the kernel calls. Under
-# FATSTUB it is renamed to a name nothing calls, so the object still supplies
-# the other functions the game refers to while the stub owns the entry point.
-ifeq ($(FATSTUB),1)
-GAME_ENTRY = opentyrian_main_unused
-else
-GAME_ENTRY = opentyrian_main
-endif
-
 $(OBJDIR)/ot/opentyr.o: $(OPENTYRIAN)/opentyr.c
 	@mkdir -p $(dir $@)
-	@echo "  CC    $@ (entry point renamed to $(GAME_ENTRY))"
-	@$(CC) $(CFLAGS) $(C_STANDARD) -Dmain=$(GAME_ENTRY) -c -o $@ $<
+	@echo "  CC    $@ (entry point renamed)"
+	@$(CC) $(CFLAGS) $(C_STANDARD) -Dmain=opentyrian_main -c -o $@ $<
 
 $(OBJDIR)/ot/opentyr.d: $(OPENTYRIAN)/opentyr.c
 	@mkdir -p $(dir $@)
-	@$(CC) $(CFLAGS) $(C_STANDARD) -Dmain=$(GAME_ENTRY) -M -MG -MT $(@:.d=.o) -MT $@ -MF $@ $<
+	@$(CC) $(CFLAGS) $(C_STANDARD) -Dmain=opentyrian_main -M -MG -MT $(@:.d=.o) -MT $@ -MF $@ $<
 
 $(OBJDIR):
 	@mkdir -p $(OBJDIR)
