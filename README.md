@@ -190,13 +190,31 @@ confused with a real image. If the stub image logs, the kernel, the world and
 the link are sound and the fault is in the game or in the layer between it and
 the library. If the stub image is silent, none of the game's code is involved.
 
+**A fat stub separates presence from behaviour.** The stub above proves the
+scaffolding, but it also removes the game's code from the image entirely, so
+it cannot say whether the game breaks things by *running* or merely by *being
+linked in*. `FATSTUB=1` puts every one of the game's objects into the image
+while leaving the stub as the entry point, so nothing the game contains is
+ever called:
+
+```sh
+make -C host RAPI_BOARD=rpi5 FATSTUB=1              # all of it, nothing called
+make -C host RAPI_BOARD=rpi5 FATSTUB=1 OT_LIMIT=25  # the first half only
+```
+
+If the fat image boots and the real one does not, the difference is in what
+the game does when it runs. If the fat image is silent too, the presence of
+those objects is enough on its own — a fact about layout rather than
+behaviour — and `OT_LIMIT` then bisects to the object responsible.
+
 Nothing reboots. Every failure path parks the board so the serial log survives
 and the machine can be inspected; a power cycle is what starts it again.
 
 > **This is instrumentation and it is a debt.** `host/beacon.cpp` and its
 > calls in `main.cpp`, `host/stub_opentyrian.cpp`, the `STUB` switch in
 > `host/Makefile`, and the per-step reporting in `CKernel::Initialize` are
-> here to bring the port up on real hardware. They should come out once it is
+> the `FATSTUB` and `OT_LIMIT` switches, are here to bring the port up on real
+> hardware. They should come out once it is
 > proven, leaving the plain kernel behind.
 
 ## What is not here
