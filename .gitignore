@@ -1,0 +1,6 @@
+build
+# The cross toolchain: gigabytes of vendor binaries, either unpacked here or
+# symlinked to an install elsewhere. See mk/toolchain.mk.
+/toolchains/
+/scratchpad/
+.DS_Store
