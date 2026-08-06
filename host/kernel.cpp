@@ -6,10 +6,16 @@
 // implementation. This file supplies the first two and starts the third,
 // then calls OpenTyrian's entry point with a fixed argument list.
 //
-// The game finds its data files through the TYRIAN_DIR path compiled into
-// it (see host/Makefile), and writes its configuration and saved games
-// beside them. Both are absolute paths on the card: a bare-metal program
-// has no shell to give it a meaningful working directory.
+// EVERYTHING THIS GAME TOUCHES LIVES IN ONE DIRECTORY ON THE CARD,
+// RAPI_GAME_DIR (see host/Makefile). A card carries several games, and two of
+// them writing their settings into the FAT root would each silently overwrite
+// the other's.
+//
+// Three things point at it. TYRIAN_DIR — upstream OpenTyrian's own build knob
+// — is set from it, so the game finds its data files there; game_paths.cpp
+// answers the configuration and saved-game path with the same value; and this
+// kernel makes it the working directory before the game starts, so anything
+// opened by a relative name lands there too rather than in the root.
 //
 // This kernel also decides the core layout (see kernel.h for the roles) and
 // hands one core to the shim's presentation worker. The library never
@@ -25,6 +31,7 @@
 #include <circle/machineinfo.h>
 #include <SDL2/SDL_circle.h>
 #include <SDL2/SDL_error.h>
+#include <unistd.h>
 #include <atomic>
 
 // OpenTyrian's entry point. It is main() in the upstream source; the build
@@ -262,6 +269,19 @@ TShutdownMode CKernel::Run(void)
                                     sizeof(OpenTyrianArgv) / sizeof(OpenTyrianArgv[0]),
                                     s_FinalArgv,
                                     sizeof(s_FinalArgv) / sizeof(s_FinalArgv[0]));
+
+    // Move into this game's own directory before the game runs, so anything
+    // it opens by a relative name lands there and never in the card's root.
+    // TYRIAN_DIR already points the data and settings paths at the same
+    // place; this covers whatever neither of them names.
+    //
+    // Done here, on core 0, before the application core is released: the
+    // working directory is one global that the split and the
+    // everything-on-core-0 path both inherit, so this covers each once.
+    if (chdir(RAPI_GAME_DIR) != 0)
+        m_Logger.Write(From, LogWarning,
+                       "could not enter " RAPI_GAME_DIR
+                       " — relative paths will resolve at the card root");
 
     // Serial key injection, if the block asked for it. Armed HERE, before
     // the split is armed and before the application core is let go: the

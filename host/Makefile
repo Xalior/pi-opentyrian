@@ -61,12 +61,22 @@ TARGET = $(OBJDIR)/$(IMAGE)
 # Where the game keeps its files on the card
 # ---------------------------------------------------------------------------
 #
-# The directory holding the Tyrian data files, compiled into the game the way
-# its own build compiles one in. It is also where saved games and settings are
-# written (see game_paths.cpp), so one directory on the card holds everything
-# belonging to the game. An absolute path, because a bare-metal program has no
-# meaningful working directory.
-TYRIAN_DIR ?= /tyrian
+# EVERYTHING THIS GAME TOUCHES LIVES IN ONE DIRECTORY ON THE CARD. A card
+# carries several games, and two of them writing their settings into the FAT
+# root would each silently overwrite the other's. Under /games/ rather than at
+# the root so a dozen of them do not sprawl across it.
+#
+# A build-time constant, not a boot switch: a card's layout is decided when the
+# card is staged, and a game that could be relocated at boot would only mean
+# two places to look for the same file.
+#
+# TYRIAN_DIR is upstream OpenTyrian's OWN build knob — its src/file.c reads it
+# to find the data files — so pointing it here needs no patch and no fork. This
+# port sets it from RAPI_GAME_DIR, the name every game in this family uses, and
+# game_paths.cpp answers the saved-game and settings path with the same value.
+RAPI_GAME_DIR ?= /games/tyrian
+TYRIAN_DIR    ?= $(RAPI_GAME_DIR)
+DEFINE        += -DRAPI_GAME_DIR='"$(RAPI_GAME_DIR)"'
 
 # ---------------------------------------------------------------------------
 # Sources
