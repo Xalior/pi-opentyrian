@@ -151,6 +151,37 @@ knowing about:
 - `circle_stubs.cpp` holds the small remainder: key names, window geometry
   that cannot change on a machine with one screen, and one string helper.
 
+## Bringing up a board that says nothing
+
+A bare-metal board that boots and produces no output tells you nothing about
+which half is at fault: the layer that starts the machine, or the game running
+on top of it. Two things in this repository exist to separate them.
+
+**The kernel reports each bring-up step as it passes**, by writing straight to
+the serial port rather than through the logger — because the logger, the
+interrupt system and the timer are themselves among the things being started,
+and a failure in any of them would otherwise have no way to say so. The last
+`[init]` line on the wire names the step that did not finish.
+
+**A stub image links the scaffolding with no game in it at all:**
+
+```sh
+make -C host RAPI_BOARD=rpi5 STUB=1
+```
+
+It builds to `host/build/rpi5-stub/`, under its own name so it can never be
+confused with a real image. If the stub image logs, the kernel, the world and
+the link are sound and the fault is in the game or in the layer between it and
+the library. If the stub image is silent, none of the game's code is involved.
+
+Nothing reboots. Every failure path parks the board so the serial log survives
+and the machine can be inspected; a power cycle is what starts it again.
+
+> **This is instrumentation and it is a debt.** `host/stub_opentyrian.cpp`,
+> the `STUB` switch in `host/Makefile`, and the per-step reporting in
+> `CKernel::Initialize` are here to bring the port up on real hardware. They
+> should come out once it is proven, leaving the plain kernel behind.
+
 ## What is not here
 
 - **Network play.** OpenTyrian's two-player mode needs SDL2_net and a TCP/IP

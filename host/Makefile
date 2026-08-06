@@ -38,7 +38,19 @@ ROOT       = ..
 SHIM       = $(ROOT)/circle-libsdl2
 OPENTYRIAN = $(ROOT)/opentyrian/src
 
+# Boot bisection: STUB=1 links the host scaffolding with no game in it at all
+# (see stub_opentyrian.cpp). It builds into its own directory and under its own
+# name so a stub image can never be mistaken for a real one, on disk or on the
+# bench, and so `make verify` keeps checking only the real ones.
+#
+# Instrumentation, not product. See the README's note about removing it.
+STUB ?= 0
+
+ifeq ($(STUB),1)
+OBJDIR = build/$(RAPI_BOARD)-stub
+else
 OBJDIR = build/$(RAPI_BOARD)
+endif
 
 # Circle's own image names, which the Raspberry Pi firmware selects between
 # from the model sections of config.txt: the Pi 3 world boots kernel8.img,
@@ -76,6 +88,9 @@ TYRIAN_DIR ?= /tyrian
 # project's own code.
 HOST_SRCS = main.cpp kernel.cpp defaults.cpp circle_syscalls.cpp \
 	circle_stubs.cpp sdl_indexed.cpp sdl_audio_glue.cpp game_paths.cpp
+ifeq ($(STUB),1)
+HOST_SRCS += stub_opentyrian.cpp
+endif
 HOST_OBJS = $(addprefix $(OBJDIR)/,$(HOST_SRCS:.cpp=.o))
 
 # OpenTyrian's source list, taken the way its own Makefile takes it: every
@@ -90,7 +105,12 @@ HOST_OBJS = $(addprefix $(OBJDIR)/,$(HOST_SRCS:.cpp=.o))
 # TCP/IP stack under this kernel and no SDL2_net to build against.
 OT_SRCS = $(notdir $(wildcard $(OPENTYRIAN)/*.c))
 
+ifeq ($(STUB),1)
+# The stub image links none of it.
+OT_OBJS =
+else
 OT_OBJS = $(addprefix $(OBJDIR)/ot/,$(OT_SRCS:.c=.o))
+endif
 
 OBJS = $(HOST_OBJS) $(OT_OBJS)
 

@@ -170,26 +170,63 @@ static unsigned BuildEpoch(void)
     return (unsigned)(days * 86400L + hh*3600 + mm*60 + ss);
 }
 
+// Bring-up evidence, written STRAIGHT to the serial port rather than through
+// the logger.
+//
+// Everything the logger needs — itself, the interrupt system, the timer — is
+// brought up by the function below, so a failure in any of it leaves the
+// logger unable to report the thing that stopped it. That is the case where
+// evidence matters most: a board that emits nothing at all cannot be told
+// apart from a board that never started, and both look like a dead image from
+// the far end of a serial cable.
+//
+// So each step announces itself before it runs, by a polled write to the UART.
+// The last name on the wire is the step that did not finish.
+void CKernel::Step(const char *pName)
+{
+    m_Serial.Write("[init] ", 7);
+    size_t nLen = 0;
+    while (pName[nLen] != '\0')
+        nLen++;
+    m_Serial.Write(pName, nLen);
+    m_Serial.Write("\n", 1);
+}
+
 boolean CKernel::Initialize(void)
 {
     boolean bOK = TRUE;
-    if (bOK) bOK = m_Serial.Initialize(115200);
+
+    // The serial port first and on its own: until it is up there is nowhere
+    // to report anything, so this one step is the only one that cannot
+    // announce itself beforehand.
+    bOK = m_Serial.Initialize(115200);
+    if (!bOK)
+        return FALSE;   // nothing can be said about this, by construction
+    Step("serial up");
+
+    Step("logger");
     if (bOK) bOK = m_Logger.Initialize(&m_Serial);
+    Step("interrupts");
     if (bOK) bOK = m_Interrupt.Initialize();
+    Step("timer");
     if (bOK) bOK = m_Timer.Initialize();
     // No battery RTC on a Pi: seed the wall clock with the build time —
     // like a device whose clock was set once at the factory — so time()
     // is plausible and the shim's pre-main factory clock hands over
     // seamlessly (see circle-libsdl2 src/init.cpp).
     if (bOK) m_Timer.SetTime(BuildEpoch(), FALSE /* universal */);
+    Step("sd card");
     if (bOK) bOK = m_EMMC.Initialize();
+    Step("filesystem");
     if (bOK) bOK = (f_mount(&m_FileSystem, "SD:", 1) == FR_OK);
+    Step("console");
     if (bOK) bOK = m_Console.Initialize();
     if (bOK) CGlueStdioInit(m_Console);
 
     // Core 0 runs application and library code like any other core, so it
     // arms itself too — before the secondary cores start, and before the
     // first thing that can throw.
+    Step("core runtime");
     if (bOK) SDL2Circle_ArmCoreRuntime();
 
     // Start the secondary cores last: the world they are about to work in
@@ -198,7 +235,10 @@ boolean CKernel::Initialize(void)
     // in CSplitCores::Run until Run() below arms the split and opens the
     // gate.
     m_bSplit = m_Options.GetAppOptionDecimal("rapi-split", 1) != 0;
+    Step(m_bSplit ? "secondary cores" : "secondary cores skipped (rapi-split=0)");
     if (bOK && m_bSplit) bOK = m_Cores.Initialize();
+
+    Step(bOK ? "initialize complete" : "INITIALIZE FAILED");
     return bOK;
 }
 
