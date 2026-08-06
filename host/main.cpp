@@ -15,9 +15,6 @@
 #include "kernel.h"
 #include <circle/startup.h>
 
-// Boot phase markers (beacon.cpp). Instrumentation; see the README.
-void BeaconMark(const char *pMark);
-
 static void Park(void)
 {
     for (;;)
@@ -28,11 +25,7 @@ static void Park(void)
 
 int main(void)
 {
-    BeaconMark("B main entered");
-
     CKernel Kernel;
-
-    BeaconMark("C kernel constructed");
 
     if (!Kernel.Initialize())
     {

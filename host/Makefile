@@ -103,10 +103,7 @@ TYRIAN_DIR ?= /tyrian
 
 # The kernel wrapper, the syscall layer and the SDL2 gap layer: this
 # project's own code.
-# beacon.cpp is deliberately FIRST: it carries a static constructor whose
-# whole job is to mark the moment the constructor phase begins, and link order
-# is what decides when among ours it runs.
-HOST_SRCS = beacon.cpp main.cpp kernel.cpp defaults.cpp circle_syscalls.cpp \
+HOST_SRCS = main.cpp kernel.cpp defaults.cpp circle_syscalls.cpp \
 	circle_stubs.cpp sdl_indexed.cpp sdl_audio_glue.cpp game_paths.cpp
 ifneq ($(filter 1,$(STUB) $(FATSTUB)),)
 HOST_SRCS += stub_opentyrian.cpp

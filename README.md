@@ -163,22 +163,6 @@ interrupt system and the timer are themselves among the things being started,
 and a failure in any of them would otherwise have no way to say so. The last
 `[init]` line on the wire names the step that did not finish.
 
-**Phase markers cover the part before that.** `Initialize` can only start
-reporting once the serial device is up, and a failure earlier than that — in
-the C runtime's start-up, in a static constructor, or while the kernel object
-is being built — produces nothing at all, which looks exactly like an image
-that was never entered. `host/beacon.cpp` puts a mark on the wire at each of
-those boundaries, using a serial device of its own. The last mark to arrive
-names the phase that did not finish:
-
-| Last thing seen | Where it stopped |
-|---|---|
-| nothing | the C runtime never reached our code |
-| `<beacon A ...>` | during static constructors |
-| `<beacon B ...>` | in `main`, constructing the kernel object |
-| `<beacon C ...>` | in `Initialize`, before the serial device came up |
-| `[init] ...` | past the beacons; the step name says where |
-
 **A stub image links the scaffolding with no game in it at all:**
 
 ```sh
@@ -210,8 +194,7 @@ behaviour — and `OT_LIMIT` then bisects to the object responsible.
 Nothing reboots. Every failure path parks the board so the serial log survives
 and the machine can be inspected; a power cycle is what starts it again.
 
-> **This is instrumentation and it is a debt.** `host/beacon.cpp` and its
-> calls in `main.cpp`, `host/stub_opentyrian.cpp`, the `STUB` switch in
+> **This is instrumentation and it is a debt.** `host/stub_opentyrian.cpp`, the `STUB` switch in
 > `host/Makefile`, and the per-step reporting in `CKernel::Initialize` are
 > the `FATSTUB` and `OT_LIMIT` switches, are here to bring the port up on real
 > hardware. They should come out once it is
