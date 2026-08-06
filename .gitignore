@@ -1,6 +1,8 @@
 build
 # The cross toolchain: gigabytes of vendor binaries, either unpacked here or
-# symlinked to an install elsewhere. See mk/toolchain.mk.
+# symlinked to an install elsewhere. See mk/toolchain.mk. Both arrangements
+# are ignored, so the symlink form is not mistaken for a file to commit.
+/toolchains
 /toolchains/
 /scratchpad/
 .DS_Store
