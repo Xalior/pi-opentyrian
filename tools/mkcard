@@ -12,17 +12,19 @@
 #     the repo toolchain (cached once built, hash-verified);
 #   - the three kernel images from host/build/ — this script does NOT build
 #     them, run `make kernels` first;
-#   - config.txt and cmdline.txt from host/.
+#   - config.txt and cmdline.txt from host/;
+#   - the Tyrian data files, copied from media/ — this script does NOT fetch
+#     them, run `make media` first. Never downloaded here.
 #
 # Downloads are cached in the repo scratchpad/ and only fetched when absent
 # or hash-stale. Bounded and never silent: ends with CARD-READY or dies
 # with a reason.
 #
-# THE TYRIAN DATA FILES ARE NOT PUT ON THE CARD HERE, and cannot be: they are
-# the original game's data, released as freeware by its developers but not
-# this project's to redistribute. The card is finished except for them — an
-# empty tyrian/ directory is created, and the README says which files belong
-# in it and where they come from. Supply them and the card boots.
+# The Tyrian data lands under games/tyrian/ — RAPI_GAME_DIR in host/Makefile
+# — because that is the directory the kernel enters before the game starts.
+# Data staged anywhere else is data the game never sees. If media/tyrian21/
+# is missing or empty, games/tyrian/ is still created, empty, and the card is
+# a legitimate one short of its data — see the README for where to get it.
 
 set -e
 set -o pipefail
@@ -182,9 +184,23 @@ done
 "${CP[@]}" "$ROOT/host/config.txt" "$ROOT/host/cmdline.txt" "$CARD/"
 
 # Where the game reads its data and writes its settings and saved games. The
-# path is compiled into the kernel (TYRIAN_DIR in host/Makefile), so the two
-# have to agree.
-mkdir -p "$CARD/tyrian"
+# path is compiled into the kernel (RAPI_GAME_DIR/TYRIAN_DIR in
+# host/Makefile), so the two have to agree: the kernel enters this directory
+# before the game starts, so data staged anywhere else is data the game never
+# sees.
+GAME_DIR=games/tyrian
+mkdir -p "$CARD/$GAME_DIR"
+
+# THIS SCRIPT NEVER DOWNLOADS the Tyrian data — it only copies what
+# `make media` already fetched and verified into media/tyrian21/. Empty or
+# missing media/ is not an error here: it produces a real card, short of its
+# data, and says so below.
+MEDIA_DATA=$ROOT/media/tyrian21
+DATA_STAGED=0
+if [[ -d $MEDIA_DATA ]] && [[ -n $(ls -A "$MEDIA_DATA" 2>/dev/null) ]]; then
+    "${CP[@]}" -R "$MEDIA_DATA/." "$CARD/$GAME_DIR/"
+    DATA_STAGED=1
+fi
 
 # macOS sprays AppleDouble ._* files onto FAT regardless of the copy flags.
 dot_clean -m "$CARD" 2>/dev/null || true
@@ -202,4 +218,9 @@ for name src in "${(@kv)SLOTS}"; do
 done
 sync
 print "CARD-READY $CARD"
-print "  DATA  tyrian/ is EMPTY — copy the Tyrian 2.1 data files into it before booting"
+if (( DATA_STAGED )); then
+    print "  DATA  $GAME_DIR/ staged from media/tyrian21/"
+else
+    print "  ABSENT $GAME_DIR/ is EMPTY — 'make media' fetches the Tyrian 2.1"
+    print "         data files, or copy your own into media/tyrian21/ first"
+fi

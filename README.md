@@ -38,21 +38,34 @@ Three processor cores are given separate work:
 
 **This repository contains no game data and cannot be run without it.**
 OpenTyrian is the game's program; the graphics, sounds, levels and music data
-belong to Tyrian itself and are not distributed here.
+belong to Tyrian itself and are not distributed here. Building the images does
+not download it, and neither does writing a card.
 
-The Tyrian 2.1 data was released as freeware by the game's original
-developers. OpenTyrian's own README names where it is published:
+```sh
+make media
+```
 
-> https://camanis.net/tyrian/tyrian21.zip
+fetches the one archive this game needs — `tyrian21.zip`, the Tyrian 2.1 data
+files, levels, ships, sound and the rest — from
+`https://camanis.net/tyrian/tyrian21.zip`. Epic MegaGames, the game's original
+developer, released that data as freeware in 2004, and OpenTyrian's own
+upstream README names this exact URL as the freeware source. camanis.net is a
+plain, unauthenticated file listing: no login, no paywall, no click-through
+gate.
 
-Unpack that archive and put its contents — `tyrian1.lvl`, `tyrian.shp`,
-`voices.snd` and the rest — into the `tyrian/` directory on the SD card. That
-directory is also where the game writes its settings, its key bindings and its
-saved games.
+The download is checked against a SHA256 and MD5 computed from this project's
+own fetch — no independently published checksum for this archive exists, so
+neither one is an authoritative reference the way, say, Doom's shareware MD5
+is. They only prove that a later fetch produced identical bytes. The archive
+is unpacked into `media/tyrian21/`, and `make card` copies it from there onto
+the card. Running `make media` again re-verifies what is already there rather
+than downloading it a second time.
 
-Nothing else is needed, and nothing about obtaining the data involves working
-around a licence, a payment or a copy protection scheme. If a source asks you
-to do any of those things, it is the wrong source.
+Nothing about obtaining the data involves working around a licence, a payment
+or a copy protection scheme. If a source asks you to do any of those things,
+it is the wrong source — and if a fetch ever needed a browser or a login
+instead of a plain download, this target would say so rather than reach for
+one.
 
 ## Building
 
@@ -96,9 +109,11 @@ make card
 ```
 
 This stages a complete card into `build/sd-card/`: the Raspberry Pi firmware,
-the three kernel images, and the boot configuration. Copy the contents onto a
-FAT-formatted SD card, then add the Tyrian data files to the `tyrian/`
-directory as described above.
+the three kernel images, the boot configuration, and — if `make media` has
+already been run — the Tyrian data files, copied into `games/tyrian/`, the
+directory the kernel enters before the game starts. `make card` never
+downloads anything itself; run without `media/` populated, it stages a real
+card and says that `games/tyrian/` is empty.
 
 `tools/mkcard` can also write a mounted card directly:
 

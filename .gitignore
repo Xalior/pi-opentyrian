@@ -5,4 +5,5 @@ build
 /toolchains
 /toolchains/
 /scratchpad/
+/media/
 .DS_Store
