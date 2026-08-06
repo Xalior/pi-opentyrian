@@ -98,7 +98,7 @@ DEFINE        += -DRAPI_GAME_DIR='"$(RAPI_GAME_DIR)"'
 # The kernel wrapper, the syscall layer and the SDL2 gap layer: this
 # project's own code.
 HOST_SRCS = main.cpp kernel.cpp defaults.cpp circle_syscalls.cpp \
-	circle_stubs.cpp sdl_indexed.cpp sdl_audio_glue.cpp game_paths.cpp
+	circle_stubs.cpp sdl_audio_glue.cpp game_paths.cpp
 HOST_OBJS = $(addprefix $(OBJDIR)/,$(HOST_SRCS:.cpp=.o))
 
 # OpenTyrian's source list, taken the way its own Makefile takes it: every
@@ -231,20 +231,16 @@ WRAPPED_SYSCALLS = \
 # SDL and game entry points, redirected at link time
 # ---------------------------------------------------------------------------
 #
-# The same mechanism, used for four places where what the game asks for and
+# The same mechanism, used for two places where what the game asks for and
 # what the library offers do not line up. Each one is implemented in this
 # directory, calls __real_ for the cases it does not handle, and is explained
 # where it is written.
 #
-#   SDL_CreateRGBSurface   an 8-bit request is served here; every other depth
-#   SDL_FreeSurface        goes to the library      (sdl_indexed.cpp)
-#   SDL_CreateTexture      RGB888 is the library's ARGB8888 (sdl_indexed.cpp)
 #   SDL_OpenAudioDevice    a mono game on a stereo device
 #                                                 (sdl_audio_glue.cpp)
 #   get_user_directory     the game's own; there is no environment to read
 #                                                   (game_paths.cpp)
 WRAPPED_SDL = \
-	SDL_CreateRGBSurface SDL_FreeSurface SDL_CreateTexture \
 	SDL_OpenAudioDevice
 
 WRAPPED_GAME = get_user_directory

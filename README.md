@@ -157,14 +157,13 @@ knowing about:
 - `circle_syscalls.cpp` puts the library's any-core file service underneath
   the C library, so the game's ordinary `fopen` works from the core it runs
   on.
-- `sdl_indexed.cpp` supplies the 8-bit palette surfaces Tyrian draws into.
-  The library implements 32-bit surfaces only, because for its own renderer a
-  surface is just a staging buffer; the game's 256-colour screen needs a real
-  one.
 - `sdl_audio_glue.cpp` puts the game's mono audio onto the Pi's stereo sound
-  device, and converts its 8-bit sound effects to the rate the device runs at.
-- `circle_stubs.cpp` holds the small remainder: key names, window geometry
-  that cannot change on a machine with one screen, and one string helper.
+  device, which the library always opens in stereo regardless of what a game
+  asks for. Sample-rate conversion for the game's 8-bit sound effects is the
+  library's own.
+- `circle_stubs.cpp` is the SDL2 gap layer's placeholder, currently empty:
+  the 8-bit palette surfaces, key names, window geometry and string helpers
+  it used to hold are now the library's.
 
 ## What is not here
 
