@@ -140,31 +140,6 @@ board. The default keys are the game's own:
 The bindings can be changed in the game's own options menu, and are saved to
 the card.
 
-## Where the pieces are
-
-| Path | What it holds |
-|---|---|
-| `host/` | the Circle kernel, the SDL2 gap layer, the boot configuration |
-| `mk/toolchain.mk` | finds the cross compiler |
-| `tools/mkcard` | builds an SD card |
-| `opentyrian/` | the game, as a submodule, unmodified |
-| `circle-libsdl2/` | the SDL2 implementation, as a submodule |
-
-Inside `host/`, each file says at the top what it is for. The ones worth
-knowing about:
-
-- `kernel.cpp` brings the board up and calls the game.
-- `circle_syscalls.cpp` puts the library's any-core file service underneath
-  the C library, so the game's ordinary `fopen` works from the core it runs
-  on.
-- `sdl_audio_glue.cpp` puts the game's mono audio onto the Pi's stereo sound
-  device, which the library always opens in stereo regardless of what a game
-  asks for. Sample-rate conversion for the game's 8-bit sound effects is the
-  library's own.
-- `circle_stubs.cpp` is the SDL2 gap layer's placeholder, currently empty:
-  the 8-bit palette surfaces, key names, window geometry and string helpers
-  it used to hold are now the library's.
-
 ## What is not here
 
 - **Network play.** OpenTyrian's two-player mode needs SDL2_net and a TCP/IP
