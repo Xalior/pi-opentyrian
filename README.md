@@ -8,6 +8,11 @@ running beside it.
 It builds for the Raspberry Pi 3, Pi 4 and Pi 5, all three from one source
 tree.
 
+![OpenTyrian running on a Raspberry Pi 5 with no operating system](docs/opentyrian-on-bare-metal.jpg)
+
+*Captured from the Pi 5's HDMI output. The board is running this image and
+nothing else — no kernel underneath it, no window system, no launcher.*
+
 ## What this is
 
 [OpenTyrian](https://github.com/opentyrian/opentyrian) is an ordinary SDL2
@@ -19,20 +24,15 @@ implementation built on Circle's bare-metal drivers.
 
 The game's own source is not copied or modified here. It is a submodule,
 pinned at an upstream commit, and the build reads it without ever writing to
-it. Everywhere the game and the library do not line up, the difference is
-resolved in this repository's own `host/` directory, using the linker's
-`--wrap` option so that neither submodule has to change.
+it.
 
-Three processor cores are given separate work:
+## What works
 
-- **Core 0** owns the hardware. Circle's world lives here — interrupts, USB,
-  the SD card, sound — and no other core touches a device.
-- **Core 1** runs the game and nothing else, including the software synthesis
-  of the OPL chip the original game's music was written for.
-- **Core 2** puts finished frames on the screen. The game draws at 320x200 and
-  scales that to 640x400 itself, exactly as it does on a desktop; the picture
-  is then scaled once more, at the end, onto whatever the screen is really
-  showing.
+The game plays, with its music: Tyrian's soundtrack was written for an OPL
+chip, and the game emulates one rather than needing the hardware.
+
+Network play is the one thing missing — the two-player mode is not built, so
+this is single player.
 
 ## The data files you have to supply
 
@@ -139,16 +139,6 @@ board. The default keys are the game's own:
 
 The bindings can be changed in the game's own options menu, and are saved to
 the card.
-
-## What is not here
-
-- **Network play.** OpenTyrian's two-player mode needs SDL2_net and a TCP/IP
-  stack, neither of which exists under this kernel. The game is built without
-  it, exactly as its own build system allows.
-- **Mouse control.** The game's menus can be driven by mouse on a desktop.
-  Here they are driven by the keyboard, which is how the game was played
-  originally.
-- **A window.** There is one screen and it is always full.
 
 ## Licence
 
