@@ -115,17 +115,6 @@ HOST_SRCS = main.cpp kernel.cpp defaults.cpp circle_syscalls.cpp \
 	circle_stubs.cpp game_paths.cpp
 HOST_OBJS = $(addprefix $(OBJDIR)/,$(HOST_SRCS:.cpp=.o))
 
-# The SD card's read cache, which lives in circle-libsdl2 rather than here.
-#
-# It is not part of SDL and does not use it: it is Circle device-layer code
-# that wraps the card and is picked up by name, so FatFs and every file the
-# game opens go through it without knowing. It is kept in that repository
-# because that is where the shared pieces are today, and it is compiled
-# straight into this kernel — there is no library to link, and no other port
-# has to agree with this one about how it is built.
-DISKCACHE_DIR = $(SHIM)/circle-diskcache
-DISKCACHE_OBJ = $(OBJDIR)/diskcache.o
-
 # OpenTyrian's source list, taken the way its own Makefile takes it: every
 # C file in its src directory. Upstream enumerates them with a wildcard too,
 # so a file added upstream arrives here the moment the pin moves and does not
@@ -140,7 +129,7 @@ OT_SRCS = $(notdir $(wildcard $(OPENTYRIAN)/*.c))
 
 OT_OBJS = $(addprefix $(OBJDIR)/ot/,$(OT_SRCS:.c=.o))
 
-OBJS = $(HOST_OBJS) $(DISKCACHE_OBJ) $(OT_OBJS)
+OBJS = $(HOST_OBJS) $(OT_OBJS)
 
 STANDARD = -std=gnu++17
 
@@ -194,6 +183,10 @@ DEPFLAGS   = -MD -MP
 # there is only ever one recipe for the image.
 SDL_APP_IMAGE := $(TARGET)
 TARGET := $(OBJDIR)/.circle-unused
+
+# The SD card's read cache. See circle-diskcache/README.md for what it does
+# and why this line goes here, immediately before Rules.mk.
+include $(SHIM)/circle-diskcache/diskcache.mk
 include $(CIRCLEHOME)/Rules.mk
 TARGET := $(SDL_APP_IMAGE)
 
@@ -210,7 +203,6 @@ endif
 # include path provides, so the shim's SDL2/ directory goes on the path in
 # its own right alongside the SDL2/-prefixed one this project's own code uses.
 INCLUDE := -I $(SHIM)/include -I $(SHIM)/include/SDL2 -I $(OPENTYRIAN) \
-	-I $(DISKCACHE_DIR) \
 	$(CIRCLE_STDLIB_INCLUDES) $(INCLUDE)
 
 # The shim comes in whole, every member, rather than only the members the
@@ -286,13 +278,6 @@ LDFLAGS += $(addprefix --wrap=,$(WRAPPED_SYSCALLS) $(WRAPPED_GAME))
 # This project's own objects, board-scoped. These more-specific rules win
 # over Rules.mk's in-place %.o/%.d, so nothing is written beside the source.
 $(OBJDIR)/%.o: %.cpp | $(OBJDIR)
-	@echo "  CPP   $@"
-	@$(CPP) $(CPPFLAGS) $(DEPFLAGS) -c -o $@ $<
-
-# The disk cache, which lives outside this directory. Its own rule because
-# the pattern rule above only reaches sources beside this makefile, and its
-# object goes in this board's tree like every other.
-$(DISKCACHE_OBJ): $(DISKCACHE_DIR)/diskcache.cpp | $(OBJDIR)
 	@echo "  CPP   $@"
 	@$(CPP) $(CPPFLAGS) $(DEPFLAGS) -c -o $@ $<
 
